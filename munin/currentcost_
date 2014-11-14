@@ -6,13 +6,11 @@
 #
 # Link this as currentcost_watts or currentcost_temp
 #
-# Environment variables supported:
-#
-#	* port: Serial port to connect to (default /dev/ttyUSB0)
-#	* baud: Baud rate (default 57600)
+# Will read data from /tmp/__currentcost_watt and /tmp/__currentcost_temp files.
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013
+# @contributor Ermanno Baschiera 2014 <ebaschiera@gmail.com>
 # @link http://www.marcus-povey.co.uk
 # 
 # Copyright (c) 2013 Marcus Povey
@@ -40,18 +38,10 @@ import os
 
 def main(argv):
 	
-	# Path to the current cost script, modify accordingly
-	PATH = os.getenv('path', '../')
-	PATH = PATH + 'current-cost.py'
+	watt_file = '/tmp/__currentcost_watt'
+	temp_file = '/tmp/__currentcost_temp'
 	command = argv[0].split('_')
 	
-	# Set defaults, pulling from environment if necessary
-	format = ''
-	port = os.getenv('port', '/dev/ttyUSB0')
-	baud = os.getenv('baud', 57600)
-	timeout = 30
-	
-	format = '"watts.value {{watts}}|temp.value {{temp}}"'
 	
 	# Which mode?
 	if command[1] == 'watts':
@@ -67,14 +57,14 @@ def main(argv):
 			print 'watts.label Watts'
 			sys.exit()
 			
-		os.system('cat /tmp/__currentcost_out | cut -d\'|\' -f1')
+		os.system('cat ' + watt_file)
 		
 	elif command[1] == 'temp':
 		
 		# Is this a config mode?
 		if len(argv) > 1 and argv[1] == 'config':
 			# CONFIG
-			print 'graph_args --base 1000 -l -50' 
+			print 'graph_args --base 1000 -l -10' 
 			print 'graph_scale no'
 			print 'graph_title Current Cost Temperature'
 			print 'graph_vlabel Temperature C'
@@ -82,13 +72,7 @@ def main(argv):
 			print 'temp.label Temperature'
 			sys.exit()
 			
-		os.system('cat /tmp/__currentcost_out | cut -d\'|\' -f2')
-
-	if not os.path.isfile('/tmp/__currentcost.lock'):
-		os.system('touch /tmp/__currentcost.lock && ' + PATH + ' -o ' + format + ' -t ' + str(timeout) + ' -b ' + str(baud) + ' -p ' + port + ' > /tmp/__currentcost_out.tmp 2> /tmp/__currentcost_out.err && mv /tmp/__currentcost_out.tmp /tmp/__currentcost_out && rm /tmp/__currentcost.lock & ')
-	else:
-		os.system('rm /tmp/__currentcost.lock')
-	
+		os.system('cat ' + temp_file)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

@@ -57,7 +57,8 @@ def main(argv):
 			print 'watts.label Watts'
 			sys.exit()
 			
-		os.system('cat ' + watt_file)
+		with open(watt_file) as f: s = f.read()
+        print 'watts.value ' + s
 		
 	elif command[1] == 'temp':
 		
@@ -72,7 +73,8 @@ def main(argv):
 			print 'temp.label Temperature'
 			sys.exit()
 			
-		os.system('cat ' + temp_file)
+		with open(temp_file) as f: s = f.read()
+        print 'temp.value ' + s
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

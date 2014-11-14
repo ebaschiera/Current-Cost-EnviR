@@ -7,7 +7,7 @@
 # meters in the range.
 # This tool will write /tmp/__currentcost_watt and /tmp/__currentcost_temp from 
 # sensor 0.
-# Output is formatted for Munin.
+# Output is raw numbers.
 # Put this in the system cron, to be executed every minute.
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
@@ -85,11 +85,6 @@ def main():
 	except:
 		#sys.stderr.write("Could not get details from device")
 		sys.exit()
-
-	watts = 'watts.value ' + watts
-	temp = 'temp.value ' + temp
-	
-	#print watts
 
 	if not os.path.isfile('/tmp/__currentcost.lock'):
 		os.system('touch /tmp/__currentcost.lock && echo "' + watts + '" > /tmp/__currentcost_watt.tmp 2> /tmp/__currentcost_watt.err && mv /tmp/__currentcost_watt.tmp /tmp/__currentcost_watt && echo "' + temp + '" > /tmp/__currentcost_temp.tmp 2> /tmp/__currentcost_temp.err && mv /tmp/__currentcost_temp.tmp /tmp/__currentcost_temp && rm /tmp/__currentcost.lock & ')

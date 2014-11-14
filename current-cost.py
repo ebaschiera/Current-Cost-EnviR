@@ -5,9 +5,14 @@
 # This is a simple tool for reading the latest values from a current cost energy
 # meter. This works with my Current Cost EnviR, but it might work with other
 # meters in the range.
+# This tool will write /tmp/__currentcost_watt and /tmp/__currentcost_temp from 
+# sensor 0.
+# Output is formatted for Munin.
+# Put this in the system cron, to be executed every minute.
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013
+# @contributor Ermanno Baschiera <ebaschiera@gmail.com>
 # @link http://www.marcus-povey.co.uk
 # 
 # Copyright (c) 2013 Marcus Povey
@@ -30,25 +35,10 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###
 
-import getopt
 import sys
 import serial
 import re
-import time
-
-def usage():
-	print("Current-Cost v1.0 By Marcus Povey <marcus@marcus-povey.co.uk>");
-	print
-	print("Usage: python current-cost.py [-t timeout] [-p serial-port] [-b baudrate] [-o \"formatted list of output\"]")
-	print
-	print("Where:")
-	print("\t * timeout: is max time to wait for a reading (Default 10)")
-	print("\t * serial-port: Serial port that the meter is connected to (default /dev/ttyUSB0)")
-	print("\t * baudrate: Speed to connect to device (default 57600, which you shouldn't need to change unless you're using a different meter)")
-	print
-	print("Format string similar to 'Energy Now: {{option}}, Temperature: {{option}}'")
-	print
-	print("Where option can be {{watts}}, {{temp}}, {{time}}")
+import os
 
 def main():
 	
@@ -56,37 +46,11 @@ def main():
 	baud = 57600
 	timeout = 10
 	retry = 3
-	format = "Energy Usage at {{time}}: {{watts}} watts, room temperature {{temp}}C"
-
-	try:
-		opts, args = getopt.getopt(sys.argv[1:], "t:p:b:o:r:h", ["help"])
-	except getopt.GetoptError, err:
-		print str(err)
-		usage()
-		sys.exit()
-
-	for o, a in opts:
-		if o == "-t":
-			timeout = int(a)
-		elif o == "-p":
-			port = a
-		elif o == "-b":
-			baud = int(a)
-		elif o in ("-h", "--help"):
-			usage()
-			sys.exit()
-		elif o == "-o":
-			format = a
-		elif r == '-r':
-			retry = int(a)
-		else:
-			usage()
-			sys.exit()
-			
-			
+	target_sensor = "0"
 	
 	meter = serial.Serial(port, baud, timeout=timeout)
-	meter.open()
+	if meter.isOpen() == False:
+		meter.open()
 	
 	try:
 		data = meter.readline()
@@ -100,25 +64,37 @@ def main():
 			pass
 	
 	meter.close()
+
+	try:
+		sensor_ex = re.compile('<sensor>([0-9])</sensor>')
+		sensor = sensor_ex.findall(data)[0]
+		if sensor != target_sensor:
+			#sys.stderr.write("Not the right sensor")
+			sys.exit()
+		
+	except:
+		#sys.stderr.write("Could not get details from device")
+		sys.exit()
 	
 	try:
 		watts_ex = re.compile('<watts>([0-9]+)</watts>')
 		temp_ex = re.compile('<tmpr>([0-9\.]+)</tmpr>')
-		time_ex = re.compile('<time>([0-9\.\:]+)</time>')
 		
 		watts = str(int(watts_ex.findall(data)[0])) # cast to and from int to strip leading zeros
 		temp = temp_ex.findall(data)[0]
-		time = time_ex.findall(data)[0]
 	except:
-		sys.stderr.write("Could not get details from device")
+		#sys.stderr.write("Could not get details from device")
 		sys.exit()
+
+	watts = 'watts.value ' + watts
+	temp = 'temp.value ' + temp
 	
-	# Replace format string
-	format = format.replace("{{watts}}", watts)
-	format = format.replace("{{time}}", time)
-	format = format.replace("{{temp}}", temp)
-	
-	print format
+	#print watts
+
+	if not os.path.isfile('/tmp/__currentcost.lock'):
+		os.system('touch /tmp/__currentcost.lock && echo "' + watts + '" > /tmp/__currentcost_watt.tmp 2> /tmp/__currentcost_watt.err && mv /tmp/__currentcost_watt.tmp /tmp/__currentcost_watt && echo "' + temp + '" > /tmp/__currentcost_temp.tmp 2> /tmp/__currentcost_temp.err && mv /tmp/__currentcost_temp.tmp /tmp/__currentcost_temp && rm /tmp/__currentcost.lock & ')
+	else:
+		os.system('rm /tmp/__currentcost.lock')
 	
 if __name__ == "__main__":
     main()

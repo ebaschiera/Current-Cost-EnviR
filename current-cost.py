@@ -12,6 +12,8 @@
 # You can call this script with an argument, that is a shell script to be run if
 # the reading is successful. That shell script can be a data logger command, for
 # example.
+# To execute a script after reading, use:
+# python current-cost.py [-a|--after-read-run shell_script_name]
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013

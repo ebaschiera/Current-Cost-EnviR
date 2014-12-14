@@ -52,7 +52,7 @@ def main():
 	timeout = 10
 	retry = 3
 	target_sensor = "0"
-    after_read_run_script = None
+	after_read_run_script = None
 
 
 	try:

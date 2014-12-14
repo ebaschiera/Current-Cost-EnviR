@@ -60,7 +60,6 @@ def main():
 		opts, args = getopt.getopt(sys.argv[1:], "a", ["after-read-run"])
 	except getopt.GetoptError, err:
 		print str(err)
-		usage()
 		sys.exit()
 
 	for o, a in opts:
@@ -107,10 +106,10 @@ def main():
 
 	if not os.path.isfile('/tmp/__currentcost.lock'):
 		os.system('touch /tmp/__currentcost.lock && echo "' + watts + '" > /tmp/__currentcost_watt.tmp 2> /tmp/__currentcost_watt.err && mv /tmp/__currentcost_watt.tmp /tmp/__currentcost_watt && echo "' + temp + '" > /tmp/__currentcost_temp.tmp 2> /tmp/__currentcost_temp.err && mv /tmp/__currentcost_temp.tmp /tmp/__currentcost_temp && rm /tmp/__currentcost.lock & ')
-        # invoke datalogger trigger
-        if after_read_run_script != None:
-          if os.path.isfile(after_read_run_script):
-            os.system('sh ' + after_read_run_script)
+		# invoke datalogger trigger
+		if after_read_run_script != None:
+			if os.path.isfile(after_read_run_script):
+				os.system('sh ' + after_read_run_script)
 	else:
 		os.system('rm /tmp/__currentcost.lock')
 	

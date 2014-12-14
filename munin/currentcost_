@@ -58,7 +58,7 @@ def main(argv):
 			sys.exit()
 			
 		with open(watt_file) as f: s = f.read()
-        print 'watts.value ' + s
+	        print 'watts.value ' + s
 		
 	elif command[1] == 'temp':
 		
@@ -74,7 +74,7 @@ def main(argv):
 			sys.exit()
 			
 		with open(temp_file) as f: s = f.read()
-        print 'temp.value ' + s
+	        print 'temp.value ' + s
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

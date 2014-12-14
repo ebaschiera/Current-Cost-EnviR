@@ -9,6 +9,9 @@
 # sensor 0.
 # Output is raw numbers.
 # Put this in the system cron, to be executed every minute.
+# You can call this script with an argument, that is a shell script to be run if
+# the reading is successful. That shell script can be a data logger command, for
+# example.
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013
@@ -47,6 +50,19 @@ def main():
 	timeout = 10
 	retry = 3
 	target_sensor = "0"
+    after_read_run_script = None
+
+
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "a", ["after-read-run"])
+	except getopt.GetoptError, err:
+		print str(err)
+		usage()
+		sys.exit()
+
+	for o, a in opts:
+		if o in ("-a", "--after-read-run"):
+			after_read_run_script = args[0]
 	
 	meter = serial.Serial(port, baud, timeout=timeout)
 	if meter.isOpen() == False:
@@ -88,6 +104,10 @@ def main():
 
 	if not os.path.isfile('/tmp/__currentcost.lock'):
 		os.system('touch /tmp/__currentcost.lock && echo "' + watts + '" > /tmp/__currentcost_watt.tmp 2> /tmp/__currentcost_watt.err && mv /tmp/__currentcost_watt.tmp /tmp/__currentcost_watt && echo "' + temp + '" > /tmp/__currentcost_temp.tmp 2> /tmp/__currentcost_temp.err && mv /tmp/__currentcost_temp.tmp /tmp/__currentcost_temp && rm /tmp/__currentcost.lock & ')
+        # invoke datalogger trigger
+        if after_read_run_script != None:
+          if os.path.isfile(after_read_run_script):
+            os.system('sh ' + after_read_run_script)
 	else:
 		os.system('rm /tmp/__currentcost.lock')
 	

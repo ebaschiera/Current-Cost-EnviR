@@ -48,7 +48,7 @@ import os
 
 def main():
 	
-	port = '/dev/ttyUSB0'
+	port = '/dev/envir'
 	baud = 57600
 	timeout = 10
 	retry = 3

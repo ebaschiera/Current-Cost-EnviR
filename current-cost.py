@@ -5,8 +5,8 @@
 # This is a simple tool for reading the latest values from a current cost energy
 # meter. This works with my Current Cost EnviR, but it might work with other
 # meters in the range.
-# This tool will write /tmp/__currentcost_watt and /tmp/__currentcost_temp from 
-# sensor 0.
+# This tool will write /tmp/__currentcost_[sensor_id]_watt files, where sensor_id 
+# is taken from the target_sensors list.
 # Output is raw numbers.
 # Put this in the system cron, to be executed every minute.
 # You can call this script with an argument, that is a shell script to be run if
@@ -45,6 +45,7 @@ import sys
 import serial
 import re
 import os
+import pprint
 
 def main():
 	
@@ -52,8 +53,9 @@ def main():
 	baud = 57600
 	timeout = 10
 	retry = 3
-	target_sensor = "0"
+	target_sensors = ["0", "1"]
 	after_read_run_script = None
+	read_data = {}
 
 
 	try:
@@ -69,49 +71,71 @@ def main():
 	meter = serial.Serial(port, baud, timeout=timeout)
 	if meter.isOpen() == False:
 		meter.open()
-	
-	try:
-		data = meter.readline()
-	except:
-		pass
-	while (not data) and (retry > 0):
-		retry = retry - 1
-		try:
-			data = meter.readline()
-		except:
-			pass
+
+	# init read_data which will contain resulting reads
+	for target_sensor in target_sensors:
+		read_data[target_sensor] = False
+
+	# pprint.pprint(read_data)
+
+	for target_sensor in target_sensors:
+		if read_data[target_sensor] != False:
+			continue
+
+		current_iteration_retry = retry
+		data = False
+		
+		while (not data) or (current_iteration_retry > 0):
+			current_iteration_retry = current_iteration_retry - 1
+			try:
+				data = meter.readline()
+				if (data):
+					sensor_value = readSensorData(data)
+					if (read_data != False):
+						read_data.update(sensor_value)
+			except:
+				continue
+
+	# pprint.pprint(read_data)
 	
 	meter.close()
 
+	writeDataToDisk(read_data)
+	
+	# invoke datalogger trigger
+	if after_read_run_script != None:
+		if os.path.isfile(after_read_run_script):
+			os.system('sh ' + after_read_run_script)
+
+def readSensorData(data_line):
+	#pprint.pprint(data_line)
 	try:
 		sensor_ex = re.compile('<sensor>([0-9])</sensor>')
-		sensor = sensor_ex.findall(data)[0]
-		if sensor != target_sensor:
-			#sys.stderr.write("Not the right sensor")
-			sys.exit()
-		
+		sensor_id = sensor_ex.findall(data_line)[0]
 	except:
-		#sys.stderr.write("Could not get details from device")
-		sys.exit()
-	
+		# sys.stderr.write("Could not get a sensor id from device\n")
+		return False
 	try:
 		watts_ex = re.compile('<watts>([0-9]+)</watts>')
-		temp_ex = re.compile('<tmpr>([\ ]?[0-9\.]+)</tmpr>') # when temperature is less than 10, currentcost adds a space before the number
-		
-		watts = str(int(watts_ex.findall(data)[0])) # cast to and from int to strip leading zeros
-		temp = temp_ex.findall(data)[0].strip() # remove that extra space
+		watts = str(int(watts_ex.findall(data_line)[0])) # cast to and from int to strip leading zeros
 	except:
-		#sys.stderr.write("Could not get details from device")
-		sys.exit()
+		# sys.stderr.write("Could not get a watt value from device")
+		return False
+	parsed_data = {sensor_id: watts}
+	return parsed_data
 
-	if not os.path.isfile('/tmp/__currentcost.lock'):
-		os.system('touch /tmp/__currentcost.lock && echo "' + watts + '" > /tmp/__currentcost_watt.tmp 2> /tmp/__currentcost_watt.err && mv /tmp/__currentcost_watt.tmp /tmp/__currentcost_watt && echo "' + temp + '" > /tmp/__currentcost_temp.tmp 2> /tmp/__currentcost_temp.err && mv /tmp/__currentcost_temp.tmp /tmp/__currentcost_temp && rm /tmp/__currentcost.lock & ')
-		# invoke datalogger trigger
-		if after_read_run_script != None:
-			if os.path.isfile(after_read_run_script):
-				os.system('sh ' + after_read_run_script)
+def writeDataToDisk(read_data):
+	if not os.path.isfile('/tmp/__currentcost_2.lock'):
+		os.system('touch /tmp/__currentcost_2.lock')
+		for (sensor_id, watt_value) in read_data.items():
+			if (watt_value):
+				# sys.stdout.write("Found value " + watt_value + " for sensor " + sensor_id + "\n")
+				os.system('echo "' + watt_value + '" > /tmp/__currentcost_"' + sensor_id + '"_watt.tmp 2> /tmp/__currentcost_"' + sensor_id + '"_watt.err && mv /tmp/__currentcost_"' + sensor_id + '"_watt.tmp /tmp/__currentcost_"' + sensor_id + '"_watt& ')
+			else:
+				# sys.stdout.write("Not found values for sensor " + sensor_id + "\n")
+		os.system('rm /tmp/__currentcost_2.lock')
 	else:
-		os.system('rm /tmp/__currentcost.lock')
-	
+		os.system('rm /tmp/__currentcost_2.lock')
+
 if __name__ == "__main__":
     main()

@@ -135,26 +135,26 @@ def filterValidData(read_data, target_sensors):
 	return valid_data
 
 def writeDataToDisk(envir_data):
-	if not os.path.isfile('/tmp/__currentcost_2.lock'):
-		os.system('touch /tmp/__currentcost_2.lock')
+	if not os.path.isfile('/tmp/__currentcost_working.lock'):
+		os.system('touch /tmp/__currentcost_working.lock')
 		for (sensor_id, sensor_values) in envir_data.items():
 			power = sensor_values['power']
 			if (power):
 				# sys.stdout.write("Found power " + power + " for sensor " + sensor_id + "\n")
-				os.system('echo "' + power + '" > /tmp/__currentcost_"' + sensor_id + '"_watt.tmp 2> /tmp/__currentcost_"' + sensor_id + '"_watt.err && mv /tmp/__currentcost_"' + sensor_id + '"_watt.tmp /tmp/__currentcost_"' + sensor_id + '"_watt & ')
+				os.system('echo "' + power + '" > /tmp/__currentcost_watt_"' + sensor_id + '".tmp 2> /tmp/__currentcost_watt_"' + sensor_id + '".err && mv /tmp/__currentcost_watt_"' + sensor_id + '".tmp /tmp/__currentcost_watt_"' + sensor_id + '" & ')
 			else:
 				# sys.stdout.write("Power not found for sensor " + sensor_id + "\n")
 				pass
 			temperature = sensor_values['temp']
 			if (temperature):
 				# sys.stdout.write("Found temp " + temperature + " for sensor " + sensor_id + "\n")
-				os.system('echo "' + temperature + '" > /tmp/__currentcost_"' + sensor_id + '"_temp.tmp 2> /tmp/__currentcost_"' + sensor_id + '"_temp.err && mv /tmp/__currentcost_"' + sensor_id + '"_temp.tmp /tmp/__currentcost_"' + sensor_id + '"_temp & ')
+				os.system('echo "' + temperature + '" > /tmp/__currentcost_temp_"' + sensor_id + '".tmp 2> /tmp/__currentcost_temp_"' + sensor_id + '".err && mv /tmp/__currentcost_temp_"' + sensor_id + '".tmp /tmp/__currentcost_temp_"' + sensor_id + '" & ')
 			else:
 				pass
 				# sys.stdout.write("Temperature not found for sensor " + sensor_id + "\n")
-		os.system('rm /tmp/__currentcost_2.lock')
+		os.system('rm /tmp/__currentcost_working.lock')
 	else:
-		os.system('rm /tmp/__currentcost_2.lock')
+		os.system('rm /tmp/__currentcost_working.lock')
 
 if __name__ == "__main__":
     main()

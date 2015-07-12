@@ -1,7 +1,7 @@
 Current Cost EnviR reader tool
 ==============================
 
-This is a simple command line tool for fetching the current energy usage and temperature from a Current Cost EnviR electricity usage meter. Data will be stored into multiple files in pairs, /tmp/\_\_currentcost\_[sensor\_id]\_temp and /tmp/\_\_currentcost\_[sensor\_id]\_watt. The [sensor_id] value depends on the installed sensors. Those files can be read by other scripts to gather data. For immediate data elaboration, the '-a' option will invoke a custom shell script after a successful read from EnviR.
+This is a simple command line tool for fetching the current energy usage and temperature from a Current Cost EnviR electricity usage meter. Data will be stored into multiple files in pairs, /tmp/\_\_currentcost\_temp\_[sensor\_id] and /tmp/\_\_currentcost\_watt\_[sensor\_id]. The [sensor_id] value depends on the installed sensors. Those files can be read by other scripts to gather data. For immediate data elaboration, the '-a' option will invoke a custom shell script after a successful read from EnviR.
 
 It has been tested against the EnviR meter, but may well work with other meters in the current cost range.
 	
@@ -16,9 +16,9 @@ Where:
 
 The script reads temperature and energy usage from sensors specified in the variable "target_sensors".
 
-The temperature value is written into /tmp/\_\_currentcost\_[sensor\_id]\_temp
+The temperature value is written into /tmp/\_\_currentcost\_temp\_[sensor\_id]
 
-The energy usage value is written into /tmp/\_\_currentcost\_[sensor\_id]\_watt
+The energy usage value is written into /tmp/\_\_currentcost\_watt\_[sensor\_id]
 
 Data is written in numeric form, without measure unit.
 

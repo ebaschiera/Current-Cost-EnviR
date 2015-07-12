@@ -51,11 +51,11 @@ import os
 
 def main():
 	
-	port = '/dev/envir'
+	port = '/dev/envir' #symbolic link to /dev/ttyUSB0
 	baud = 57600
 	timeout = 10
 	retry = 3
-	target_sensors = ["0", "1"]
+	target_sensors = ["0", "1"] #set all your sensors you want to monitor
 	after_read_run_script = None
 	read_data = {}
 

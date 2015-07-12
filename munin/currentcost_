@@ -4,9 +4,11 @@
 #
 # This is a munin plugin to extract values from the Current Cost EnviR meter.
 #
-# Link this as currentcost_watts or currentcost_temp
+# Link this as currentcost_watts_[sensor_id] or currentcost_temp_[sensor_id]
+# replacing [sensor_id] with the number of the sensor you want to monitor (0 to 8).
 #
-# Will read data from /tmp/__currentcost_watt and /tmp/__currentcost_temp files.
+# Will read data from /tmp/__currentcost_watt_[sensor_id] and 
+# /tmp/__currentcost_temp_[sensor_id] files.
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013
@@ -38,26 +40,33 @@ import os
 
 def main(argv):
 	
-	watt_file = '/tmp/__currentcost_watt'
-	temp_file = '/tmp/__currentcost_temp'
+	watt_file = '/tmp/__currentcost_watt_'
+	temp_file = '/tmp/__currentcost_temp_'
 	command = argv[0].split('_')
+
+	available_sensors = ["0", "1", "2", "3", "4", "5", "6", "7", "8"]
 	
-	
+	if command[2] in available_sensors:
+		requested_sensor = command[2]
+	else:
+		sys.exit()
+
 	# Which mode?
 	if command[1] == 'watts':
 			
 		# Is this a config mode?
 		if len(argv) > 1 and argv[1] == 'config':
 			# CONFIG
-			print 'graph_args --base 1000 -l 0' 
-			print 'graph_scale no'
-			print 'graph_title Current Cost Energy Usage'
-			print 'graph_vlabel Power Usage in Watts'
-			print 'graph_category Power'
-			print 'watts.label Watts'
-			sys.exit()
+			if os.path.isfile(watt_file + requested_sensor):
+				print 'graph_args --base 1000 -l 0' 
+				print 'graph_scale no'
+				print 'graph_title Current Cost Energy Sensor ' + requested_sensor
+				print 'graph_vlabel Power in Watts'
+				print 'graph_category Power'
+				print 'watts.label Watts'
+				sys.exit()
 			
-		with open(watt_file) as f: s = f.read()
+		with open(watt_file + requested_sensor) as f: s = f.read()
 	        print 'watts.value ' + s
 		
 	elif command[1] == 'temp':
@@ -65,15 +74,16 @@ def main(argv):
 		# Is this a config mode?
 		if len(argv) > 1 and argv[1] == 'config':
 			# CONFIG
-			print 'graph_args --base 1000 -l -10' 
-			print 'graph_scale no'
-			print 'graph_title Current Cost Temperature'
-			print 'graph_vlabel Temperature C'
-			print 'graph_category Power'
-			print 'temp.label Temperature'
-			sys.exit()
+			if os.path.isfile(temp_file + requested_sensor):
+				print 'graph_args --base 1000 -l -10' 
+				print 'graph_scale no'
+				print 'graph_title Current Cost Temperature Sensor ' + requested_sensor
+				print 'graph_vlabel Temperature C'
+				print 'graph_category Power'
+				print 'temp.label Temperature'
+				sys.exit()
 			
-		with open(temp_file) as f: s = f.read()
+		with open(temp_file + requested_sensor) as f: s = f.read()
 	        print 'temp.value ' + s
 
 if __name__ == "__main__":

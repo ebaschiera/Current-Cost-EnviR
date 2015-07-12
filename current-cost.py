@@ -5,10 +5,10 @@
 # This is a simple tool for reading the latest values from a current cost energy
 # meter. This works with my Current Cost EnviR, but it might work with other
 # meters in the range.
-# This tool will write /tmp/__currentcost_[sensor_id]_watt and
-# /tmp/__currentcost_[sensor_id]_temp files, where sensor_id is taken from the 
+# This tool will write /tmp/__currentcost_watt_[sensor_id] and
+# /tmp/__currentcost_temp_[sensor_id] files, where [sensor_id] is taken from the 
 # target_sensors list.
-# Output is raw numbers. *_watt files tell the energy in watts, while *_temp
+# Output is raw numbers. *_watt_* files tell the energy in watts, while *_temp_*
 # files tell the temperature in degrees.
 # Put this in the system cron, to be executed every minute.
 # You can call this script with an argument, that is a shell script to be run if

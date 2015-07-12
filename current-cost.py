@@ -5,9 +5,21 @@
 # This is a simple tool for reading the latest values from a current cost energy
 # meter. This works with my Current Cost EnviR, but it might work with other
 # meters in the range.
+# This tool will write /tmp/__currentcost_watt_[sensor_id] and
+# /tmp/__currentcost_temp_[sensor_id] files, where [sensor_id] is taken from the 
+# target_sensors list.
+# Output is raw numbers. *_watt_* files tell the energy in watts, while *_temp_*
+# files tell the temperature in degrees.
+# Put this in the system cron, to be executed every minute.
+# You can call this script with an argument, that is a shell script to be run if
+# the reading is successful. That shell script can be a data logger command, for
+# example.
+# To execute a script after reading, use:
+# python current-cost.py [-a|--after-read-run shell_script_name]
 # 
 # @author Marcus Povey <marcus@marcus-povey.co.uk>
 # @copyright Marcus Povey 2013
+# @contributor Ermanno Baschiera <ebaschiera@gmail.com>
 # @link http://www.marcus-povey.co.uk
 # 
 # Copyright (c) 2013 Marcus Povey
@@ -34,91 +46,115 @@ import getopt
 import sys
 import serial
 import re
-import time
-
-def usage():
-	print("Current-Cost v1.0 By Marcus Povey <marcus@marcus-povey.co.uk>");
-	print
-	print("Usage: python current-cost.py [-t timeout] [-p serial-port] [-b baudrate] [-o \"formatted list of output\"]")
-	print
-	print("Where:")
-	print("\t * timeout: is max time to wait for a reading (Default 10)")
-	print("\t * serial-port: Serial port that the meter is connected to (default /dev/ttyUSB0)")
-	print("\t * baudrate: Speed to connect to device (default 57600, which you shouldn't need to change unless you're using a different meter)")
-	print
-	print("Format string similar to 'Energy Now: {{option}}, Temperature: {{option}}'")
-	print
-	print("Where option can be {{watts}}, {{temp}}, {{time}}")
+import os
+#import pprint
 
 def main():
 	
-	port = '/dev/ttyUSB0'
+	port = '/dev/envir' #symbolic link to /dev/ttyUSB0
 	baud = 57600
 	timeout = 10
 	retry = 3
-	format = "Energy Usage at {{time}}: {{watts}} watts, room temperature {{temp}}C"
+	target_sensors = ["0", "1"] #set all your sensors you want to monitor
+	after_read_run_script = None
+	read_data = {}
+
 
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "t:p:b:o:r:h", ["help"])
+		opts, args = getopt.getopt(sys.argv[1:], "a", ["after-read-run"])
 	except getopt.GetoptError, err:
 		print str(err)
-		usage()
 		sys.exit()
 
 	for o, a in opts:
-		if o == "-t":
-			timeout = int(a)
-		elif o == "-p":
-			port = a
-		elif o == "-b":
-			baud = int(a)
-		elif o in ("-h", "--help"):
-			usage()
-			sys.exit()
-		elif o == "-o":
-			format = a
-		elif r == '-r':
-			retry = int(a)
-		else:
-			usage()
-			sys.exit()
-			
-			
+		if o in ("-a", "--after-read-run"):
+			after_read_run_script = args[0]
 	
 	meter = serial.Serial(port, baud, timeout=timeout)
-	meter.open()
-	
-	try:
-		data = meter.readline()
-	except:
-		pass
-	while (not data) and (retry > 0):
-		retry = retry - 1
-		try:
-			data = meter.readline()
-		except:
-			pass
-	
+	if meter.isOpen() == False:
+		meter.open()
+
+	# init read_data which will contain resulting reads
+	for target_sensor in target_sensors:
+		read_data[target_sensor] = {'power': False, 'temp': False}
+
+	for target_sensor in target_sensors:
+		if read_data[target_sensor]['power'] != False:
+			continue
+
+		current_iteration_retry = retry
+		data = False
+		
+		while (not data) or (current_iteration_retry > 0):
+			current_iteration_retry = current_iteration_retry - 1
+			try:
+				data = meter.readline()
+				if (data):
+					sensor_values = readSensorData(data)
+					read_data.update(sensor_values)
+			except:
+				continue
+
 	meter.close()
+	valid_data = filterValidData(read_data, target_sensors)
+	writeDataToDisk(read_data)
 	
+	# invoke datalogger trigger
+	if after_read_run_script != None:
+		if os.path.isfile(after_read_run_script):
+			os.system('sh ' + after_read_run_script)
+
+def readSensorData(data_line):
+	watts = False
+	temp = False
+	try:
+		sensor_ex = re.compile('<sensor>([0-9])</sensor>')
+		sensor_id = sensor_ex.findall(data_line)[0]
+	except:
+		# sys.stderr.write("Could not get a sensor id from device\n")
+		pass
 	try:
 		watts_ex = re.compile('<watts>([0-9]+)</watts>')
+		watts = str(int(watts_ex.findall(data_line)[0])) # cast to and from int to strip leading zeros
 		temp_ex = re.compile('<tmpr>([\ ]?[0-9\.]+)</tmpr>') # when temperature is less than 10, currentcost adds a space before the number
-		time_ex = re.compile('<time>([0-9\.\:]+)</time>')
-		
-		watts = str(int(watts_ex.findall(data)[0])) # cast to and from int to strip leading zeros
-		temp = temp_ex.findall(data)[0].strip() # remove that extra space
-		time = time_ex.findall(data)[0]
+		temp = temp_ex.findall(data_line)[0].strip() # remove that extra space
 	except:
-		sys.stderr.write("Could not get details from device")
-		sys.exit()
-	
-	# Replace format string
-	format = format.replace("{{watts}}", watts)
-	format = format.replace("{{time}}", time)
-	format = format.replace("{{temp}}", temp)
-	
-	print format
-	
+		# sys.stderr.write("Could not get a watt and/or temperature value from sensor " + sensor_id)
+		pass
+	data = {'power': watts, 'temp': temp}
+	parsed_data = {sensor_id: data}
+	return parsed_data
+
+
+# will filter out data from undesired sensors
+def filterValidData(read_data, target_sensors):
+	valid_data = {}
+	for sensor in target_sensors:
+		if sensor in read_data:
+			valid_data[sensor] = read_data[sensor]
+	return valid_data
+
+def writeDataToDisk(envir_data):
+	if not os.path.isfile('/tmp/__currentcost_working.lock'):
+		os.system('touch /tmp/__currentcost_working.lock')
+		for (sensor_id, sensor_values) in envir_data.items():
+			power = sensor_values['power']
+			if (power):
+				# sys.stdout.write("Found power " + power + " for sensor " + sensor_id + "\n")
+				os.system('echo "' + power + '" > /tmp/__currentcost_watt_"' + sensor_id + '".tmp 2> /tmp/__currentcost_watt_"' + sensor_id + '".err && mv /tmp/__currentcost_watt_"' + sensor_id + '".tmp /tmp/__currentcost_watt_"' + sensor_id + '" & ')
+			else:
+				# sys.stdout.write("Power not found for sensor " + sensor_id + "\n")
+				pass
+			temperature = sensor_values['temp']
+			if (temperature):
+				# sys.stdout.write("Found temp " + temperature + " for sensor " + sensor_id + "\n")
+				os.system('echo "' + temperature + '" > /tmp/__currentcost_temp_"' + sensor_id + '".tmp 2> /tmp/__currentcost_temp_"' + sensor_id + '".err && mv /tmp/__currentcost_temp_"' + sensor_id + '".tmp /tmp/__currentcost_temp_"' + sensor_id + '" & ')
+			else:
+				pass
+				# sys.stdout.write("Temperature not found for sensor " + sensor_id + "\n")
+		os.system('rm /tmp/__currentcost_working.lock')
+	else:
+		os.system('rm /tmp/__currentcost_working.lock')
+
 if __name__ == "__main__":
     main()

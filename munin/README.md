@@ -1,33 +1,26 @@
 Current Cost Munin plugin
 ==========================
 	
-This directory contains a plugin for munin <http://munin-monitoring.org/> to monitor the output of a Current Cost EnviR meter.
+This directory contains a plugin for munin <http://munin-monitoring.org/> to monitor the output of a Current Cost EnviR meter. You can monitor several sensors. Only temperature and energy usage are supported.
+
+This plugin reads data from the following files:
+
+ * /tmp/\_\_currentcost\_watt\_[sensor\_id] for the energy usage
+ * /tmp/\_\_currentcost\_temp\_[sensor\_id] for the temperature
+ 
+Replace [sensor\_id] with the sensor number you want to monitor.
 
 Usage:
 ------
 
  * Install the files from this repo somewhere sensible
- * Link to the file from /etc/munin/plugins as normal
-	cd /etc/munin/plugins
-	ln -s /path/to/plugins/currentcost_ currentcost_watts
-	ln -s /path/to/plugins/currentcost_ currentcost_temp
- * Set an environment variables. You need to set 'env.path' in your settings top point to the location of current-cost.py (with trailing slash), also you need to run the command as a user with read access to the port (usually root) e.g.
-
-```
-echo "[currentcost*]
-user root
-env.path /path/to/my/plugins/
-" > /etc/munin/plugin-conf.d/currentcost
-```
+ * Link to the file from /etc/munin/plugins as normal (the following example uses sensor number 1)
+	* cd /etc/munin/plugins
+	* ln -s /path/to/plugins/currentcost\_ currentcost\_watts\_1
+	* ln -s /path/to/plugins/currentcost\_ currentcost\_temp\_1
 
  * Restart munin-node
 
-Environment variables:
-----------------------
-
- * env.path: Configure the location of the current-cost.py script
- * env.port: Serial port to connect to (default /dev/ttyUSB0)
- * env.baud: Baud rate (default 57600)
 
 See
 ---
